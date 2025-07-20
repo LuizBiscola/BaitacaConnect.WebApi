@@ -12,6 +12,7 @@ builder.Services.AddDbContext<BaitacaDbContext>(options =>
 // Registrar Services no DI Container
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IParqueService, ParqueService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -36,5 +37,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-//teste user desktop
