@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BaitacaConnect")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cda3f34b8e51766fab9e8fb7a852817c1e750b0a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f3fcc405153e722a82af302cc9b532ce72702edf")]
 [assembly: System.Reflection.AssemblyProductAttribute("BaitacaConnect")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BaitacaConnect")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

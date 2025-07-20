@@ -1,56 +1,38 @@
-using Microsoft.EntityFrameworkCore;
-using BaitacaConnect.Data;
 using BaitacaConnect.Models;
 using BaitacaConnect.Models.DTOs;
 using BaitacaConnect.Services.Interfaces;
+using BaitacaConnect.Repositories.Interfaces;
 
 namespace BaitacaConnect.Services
 {
     public class ParqueService : IParqueService
     {
-        private readonly BaitacaDbContext _context;
+        private readonly IParqueRepository _parqueRepository;
 
-        public ParqueService(BaitacaDbContext context)
+        public ParqueService(IParqueRepository parqueRepository)
         {
-            _context = context;
+            _parqueRepository = parqueRepository;
         }
 
         public async Task<IEnumerable<ParqueResumoDto>> GetParquesAsync(string? filtroNome, bool? ativo)
         {
-            var query = _context.Parques.AsQueryable();
+            var parques = await _parqueRepository.GetWithFiltersAsync(filtroNome, ativo);
 
-            if (!string.IsNullOrEmpty(filtroNome))
+            return parques.Select(p => new ParqueResumoDto
             {
-                query = query.Where(p => p.NomeParque.Contains(filtroNome));
-            }
-
-            if (ativo.HasValue)
-            {
-                query = query.Where(p => p.Ativo == ativo.Value);
-            }
-
-            return await query
-                .Select(p => new ParqueResumoDto
-                {
-                    IdParque = p.IdParque,
-                    NomeParque = p.NomeParque,
-                    EnderecoParque = p.EnderecoParque,
-                    CapacidadeMaxima = p.CapacidadeMaxima,
-                    Ativo = p.Ativo,
-                    TotalTrilhas = p.Trilhas.Count,
-                    TotalReservas = p.Reservas.Count
-                })
-                .OrderBy(p => p.NomeParque)
-                .ToListAsync();
+                IdParque = p.IdParque,
+                NomeParque = p.NomeParque,
+                EnderecoParque = p.EnderecoParque,
+                CapacidadeMaxima = p.CapacidadeMaxima,
+                Ativo = p.Ativo,
+                TotalTrilhas = p.Trilhas.Count,
+                TotalReservas = p.Reservas.Count
+            }).ToList();
         }
 
         public async Task<ParqueResponseDto?> GetParqueByIdAsync(int id)
         {
-            var parque = await _context.Parques
-                .Include(p => p.Trilhas)
-                .Include(p => p.Reservas)
-                .Include(p => p.PontosInteresse)
-                .FirstOrDefaultAsync(p => p.IdParque == id);
+            var parque = await _parqueRepository.GetByIdWithDetailsAsync(id);
 
             if (parque == null)
                 return null;
@@ -77,7 +59,7 @@ namespace BaitacaConnect.Services
         {
             try
             {
-                if (await NomeParqueExisteAsync(createParqueDto.NomeParque))
+                if (await _parqueRepository.NomeExistsAsync(createParqueDto.NomeParque))
                 {
                     throw new InvalidOperationException("Já existe um parque com este nome");
                 }
@@ -93,19 +75,18 @@ namespace BaitacaConnect.Services
                     Ativo = true
                 };
 
-                _context.Parques.Add(parque);
-                await _context.SaveChangesAsync();
+                var parqueCriado = await _parqueRepository.CreateAsync(parque);
 
                 return new ParqueResponseDto
                 {
-                    IdParque = parque.IdParque,
-                    NomeParque = parque.NomeParque,
-                    DescricaoParque = parque.DescricaoParque,
-                    EnderecoParque = parque.EnderecoParque,
-                    CapacidadeMaxima = parque.CapacidadeMaxima,
-                    HorarioFuncionamento = parque.HorarioFuncionamento,
-                    CoordenadasParque = parque.CoordenadasParque,
-                    Ativo = parque.Ativo,
+                    IdParque = parqueCriado.IdParque,
+                    NomeParque = parqueCriado.NomeParque,
+                    DescricaoParque = parqueCriado.DescricaoParque,
+                    EnderecoParque = parqueCriado.EnderecoParque,
+                    CapacidadeMaxima = parqueCriado.CapacidadeMaxima,
+                    HorarioFuncionamento = parqueCriado.HorarioFuncionamento,
+                    CoordenadasParque = parqueCriado.CoordenadasParque,
+                    Ativo = parqueCriado.Ativo,
                     TotalTrilhas = 0,
                     TrilhasAtivas = 0,
                     TotalReservas = 0,
@@ -115,27 +96,25 @@ namespace BaitacaConnect.Services
             }
             catch (InvalidOperationException)
             {
-                throw; // Re-throw business logic exceptions
+                throw;
             }
             catch (Exception ex)
             {
-                // Log the actual error for debugging
                 throw new InvalidOperationException($"Erro ao criar parque: {ex.Message}", ex);
             }
         }
 
         public async Task<bool> AtualizarParqueAsync(int id, UpdateParqueDto updateParqueDto)
         {
-            var parque = await _context.Parques.FindAsync(id);
+            var parque = await _parqueRepository.GetByIdAsync(id);
 
             if (parque == null)
                 return false;
 
-            // Verificar se o novo nome já está em uso por outro parque
             if (!string.IsNullOrEmpty(updateParqueDto.NomeParque) && 
                 updateParqueDto.NomeParque != parque.NomeParque)
             {
-                if (await NomeParqueExisteAsync(updateParqueDto.NomeParque))
+                if (await _parqueRepository.NomeExistsAsync(updateParqueDto.NomeParque))
                 {
                     throw new InvalidOperationException("Já existe um parque com este nome");
                 }
@@ -165,7 +144,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _parqueRepository.UpdateAsync(parque);
                 return true;
             }
             catch
@@ -176,7 +155,7 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> AtivarParqueAsync(int id)
         {
-            var parque = await _context.Parques.FindAsync(id);
+            var parque = await _parqueRepository.GetByIdAsync(id);
 
             if (parque == null)
                 return false;
@@ -185,7 +164,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _parqueRepository.UpdateAsync(parque);
                 return true;
             }
             catch
@@ -196,7 +175,7 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> DesativarParqueAsync(int id)
         {
-            var parque = await _context.Parques.FindAsync(id);
+            var parque = await _parqueRepository.GetByIdAsync(id);
 
             if (parque == null)
                 return false;
@@ -205,7 +184,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _parqueRepository.UpdateAsync(parque);
                 return true;
             }
             catch
@@ -216,62 +195,54 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> ParqueExisteAsync(int id)
         {
-            return await _context.Parques.AnyAsync(p => p.IdParque == id);
+            return await _parqueRepository.ExistsAsync(id);
         }
 
         public async Task<bool> ParqueAtivoAsync(int id)
         {
-            var parque = await _context.Parques.FindAsync(id);
-            return parque?.Ativo ?? false;
+            return await _parqueRepository.IsActiveAsync(id);
         }
 
         public async Task<bool> NomeParqueExisteAsync(string nome)
         {
-            return await _context.Parques.AnyAsync(p => p.NomeParque == nome);
+            return await _parqueRepository.NomeExistsAsync(nome);
         }
 
         public async Task<int> GetCapacidadeParqueAsync(int id)
         {
-            var parque = await _context.Parques.FindAsync(id);
-            return parque?.CapacidadeMaxima ?? 0;
+            return await _parqueRepository.GetCapacidadeAsync(id);
         }
 
         public async Task<IEnumerable<ParqueComTrilhasDto>> GetParquesComTrilhasAsync()
         {
-            return await _context.Parques
-                .Include(p => p.Trilhas)
-                .Where(p => p.Ativo)
-                .Select(p => new ParqueComTrilhasDto
+            var parques = await _parqueRepository.GetAtivasWithTrilhasAsync();
+
+            return parques.Select(p => new ParqueComTrilhasDto
+            {
+                IdParque = p.IdParque,
+                NomeParque = p.NomeParque,
+                DescricaoParque = p.DescricaoParque,
+                EnderecoParque = p.EnderecoParque,
+                CapacidadeMaxima = p.CapacidadeMaxima,
+                HorarioFuncionamento = p.HorarioFuncionamento,
+                Trilhas = p.Trilhas.Where(t => t.Ativo).Select(t => new TrilhaResumoDto
                 {
-                    IdParque = p.IdParque,
-                    NomeParque = p.NomeParque,
-                    DescricaoParque = p.DescricaoParque,
-                    EnderecoParque = p.EnderecoParque,
-                    CapacidadeMaxima = p.CapacidadeMaxima,
-                    HorarioFuncionamento = p.HorarioFuncionamento,
-                    Trilhas = p.Trilhas.Where(t => t.Ativo).Select(t => new TrilhaResumoDto
-                    {
-                        IdTrilha = t.IdTrilha,
-                        NomeTrilha = t.NomeTrilha,
-                        DificuldadeTrilha = t.DificuldadeTrilha,
-                        DistanciaKm = t.DistanciaKm,
-                        TempoEstimadoMinutos = t.TempoEstimadoMinutos,
-                        CapacidadeMaxima = t.CapacidadeMaxima,
-                        Ativo = t.Ativo,
-                        OcupacaoAtual = 0, // Pode ser calculado depois se necessário
-                        Disponivel = true // Pode ser calculado depois se necessário
-                    }).ToList()
-                })
-                .ToListAsync();
+                    IdTrilha = t.IdTrilha,
+                    NomeTrilha = t.NomeTrilha,
+                    DificuldadeTrilha = t.DificuldadeTrilha,
+                    DistanciaKm = t.DistanciaKm,
+                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
+                    CapacidadeMaxima = t.CapacidadeMaxima,
+                    Ativo = t.Ativo,
+                    OcupacaoAtual = 0,
+                    Disponivel = true
+                }).ToList()
+            }).ToList();
         }
 
         public async Task<EstatisticasParqueDto> GetEstatisticasParqueAsync(int id)
         {
-            var parque = await _context.Parques
-                .Include(p => p.Trilhas)
-                .Include(p => p.Reservas)
-                .Include(p => p.PontosInteresse)
-                .FirstOrDefaultAsync(p => p.IdParque == id);
+            var parque = await _parqueRepository.GetByIdWithDetailsAsync(id);
 
             if (parque == null)
                 throw new ArgumentException("Parque não encontrado");

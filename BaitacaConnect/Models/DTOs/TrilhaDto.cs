@@ -16,7 +16,7 @@ namespace BaitacaConnect.Models.DTOs
         [MaxLength(20)]
         public string? DificuldadeTrilha { get; set; }
 
-        [Range(0.1, 1000)]
+        [Range(0.1, 1000.0)]
         public decimal? DistanciaKm { get; set; }
 
         [Range(1, 1440)]
@@ -94,5 +94,30 @@ namespace BaitacaConnect.Models.DTOs
         public int? TempoEstimadoMinutos { get; set; }
         public string? CoordenadasTrilha { get; set; }
         public List<PontoInteresseResumoDto>? PontosInteresse { get; set; }
+    }
+
+    public class ValidarCapacidadeDto
+    {
+        [Required]
+        [Range(1, 50)]
+        public int NumeroVisitantes { get; set; } = 1;
+    }
+
+    public class EstatisticasTrilhaDto
+    {
+        public int IdTrilha { get; set; }
+        public string NomeTrilha { get; set; } = string.Empty;
+        public string NomeParque { get; set; } = string.Empty;
+        public int TotalReservas { get; set; }
+        public int ReservasAtivas { get; set; }
+        public int ReservasHoje { get; set; }
+        public int ReservasMesAtual { get; set; }
+        public int TotalPontosInteresse { get; set; }
+        public int TotalEspeciesFaunaFlora { get; set; }
+        public int CapacidadeMaxima { get; set; }
+        public decimal TaxaOcupacaoMedia { get; set; }
+        public decimal? DistanciaKm { get; set; }
+        public int? TempoEstimadoMinutos { get; set; }
+        public string? DificuldadeTrilha { get; set; }
     }
 }

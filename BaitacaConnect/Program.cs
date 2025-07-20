@@ -1,6 +1,8 @@
 using BaitacaConnect.Data;
 using BaitacaConnect.Services;
 using BaitacaConnect.Services.Interfaces;
+using BaitacaConnect.Repositories;
+using BaitacaConnect.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,10 +11,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<BaitacaDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Registrar Repositories no DI Container
+builder.Services.AddScoped<IParqueRepository, ParqueRepository>();
+builder.Services.AddScoped<ITrilhaRepository, TrilhaRepository>();
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+
 // Registrar Services no DI Container
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IParqueService, ParqueService>();
+builder.Services.AddScoped<ITrilhaService, TrilhaService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
