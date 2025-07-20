@@ -1,90 +1,48 @@
-using Microsoft.EntityFrameworkCore;
-using BaitacaConnect.Data;
 using BaitacaConnect.Models;
 using BaitacaConnect.Models.DTOs;
 using BaitacaConnect.Services.Interfaces;
+using BaitacaConnect.Repositories.Interfaces;
 
 namespace BaitacaConnect.Services
 {
     public class TrilhaService : ITrilhaService
     {
-        private readonly BaitacaDbContext _context;
+        private readonly ITrilhaRepository _trilhaRepository;
+        private readonly IParqueRepository _parqueRepository;
 
-        public TrilhaService(BaitacaDbContext context)
+        public TrilhaService(ITrilhaRepository trilhaRepository, IParqueRepository parqueRepository)
         {
-            _context = context;
+            _trilhaRepository = trilhaRepository;
+            _parqueRepository = parqueRepository;
         }
 
         public async Task<IEnumerable<TrilhaResumoDto>> GetTrilhasAsync(string? filtroNome, string? filtroDificuldade, bool? ativo, int? idParque)
         {
-            var query = _context.Trilhas
-                .Include(t => t.Parque)
-                .AsQueryable();
+            var trilhas = await _trilhaRepository.GetWithFiltersAsync(filtroNome, filtroDificuldade, ativo, idParque);
 
-            if (!string.IsNullOrEmpty(filtroNome))
+            var trilhasDto = new List<TrilhaResumoDto>();
+            foreach (var t in trilhas)
             {
-                query = query.Where(t => t.NomeTrilha.Contains(filtroNome));
-            }
-
-            if (!string.IsNullOrEmpty(filtroDificuldade))
-            {
-                query = query.Where(t => t.DificuldadeTrilha == filtroDificuldade);
-            }
-
-            if (ativo.HasValue)
-            {
-                query = query.Where(t => t.Ativo == ativo.Value);
-            }
-
-            if (idParque.HasValue)
-            {
-                query = query.Where(t => t.IdParque == idParque.Value);
-            }
-
-            // Primeiro busca os dados básicos do banco
-            var trilhasDb = await query
-                .Select(t => new
+                trilhasDto.Add(new TrilhaResumoDto
                 {
-                    t.IdTrilha,
-                    t.NomeTrilha,
-                    t.DificuldadeTrilha,
-                    t.DistanciaKm,
-                    t.TempoEstimadoMinutos,
-                    t.CapacidadeMaxima,
-                    t.Ativo
-                })
-                .OrderBy(t => t.NomeTrilha)
-                .ToListAsync();
-
-            // Depois calcula a ocupação atual para cada trilha
-            var trilhasDtos = new List<TrilhaResumoDto>();
-            
-            foreach (var trilha in trilhasDb)
-            {
-                trilhasDtos.Add(new TrilhaResumoDto
-                {
-                    IdTrilha = trilha.IdTrilha,
-                    NomeTrilha = trilha.NomeTrilha,
-                    DificuldadeTrilha = trilha.DificuldadeTrilha,
-                    DistanciaKm = trilha.DistanciaKm,
-                    TempoEstimadoMinutos = trilha.TempoEstimadoMinutos,
-                    CapacidadeMaxima = trilha.CapacidadeMaxima,
-                    Ativo = trilha.Ativo,
-                    OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha),
-                    Disponivel = trilha.Ativo
+                    IdTrilha = t.IdTrilha,
+                    NomeTrilha = t.NomeTrilha,
+                    DificuldadeTrilha = t.DificuldadeTrilha,
+                    DistanciaKm = t.DistanciaKm,
+                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
+                    CapacidadeMaxima = t.CapacidadeMaxima,
+                    Ativo = t.Ativo,
+                    OcupacaoAtual = await CalcularOcupacaoAtual(t.IdTrilha),
+                    Disponivel = t.Ativo
                 });
             }
-
-            return trilhasDtos;
+            
+            return trilhasDto;
         }
 
         public async Task<TrilhaResponseDto?> GetTrilhaByIdAsync(int id)
         {
-            var trilha = await _context.Trilhas
-                .Include(t => t.Parque)
-                .Include(t => t.Reservas)
-                .Include(t => t.PontosInteresse)
-                .FirstOrDefaultAsync(t => t.IdTrilha == id);
+            var trilha = await _trilhaRepository.GetByIdAsync(id);
 
             if (trilha == null)
                 return null;
@@ -105,9 +63,9 @@ namespace BaitacaConnect.Services
                 CoordenadasTrilha = trilha.CoordenadasTrilha,
                 Ativo = trilha.Ativo,
                 TotalPontosInteresse = trilha.PontosInteresse.Count,
-                TotalEspeciesFaunaFlora = 0, // Removido pois FaunaFlora não existe na trilha
+                TotalEspeciesFaunaFlora = 0,
                 ReservasHoje = trilha.Reservas.Count(r => DateOnly.FromDateTime(r.DataVisita.ToDateTime(TimeOnly.MinValue)) == DateOnly.FromDateTime(agora)),
-                OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha)
+                OcupacaoAtual = await CalcularOcupacaoAtual(trilha.IdTrilha)
             };
         }
 
@@ -115,14 +73,12 @@ namespace BaitacaConnect.Services
         {
             try
             {
-                // Verificar se o parque existe
-                if (!await _context.Parques.AnyAsync(p => p.IdParque == createTrilhaDto.IdParque))
+                if (!await _parqueRepository.ExistsAsync(createTrilhaDto.IdParque))
                 {
                     throw new InvalidOperationException("Parque não encontrado");
                 }
 
-                // Verificar se já existe trilha com o mesmo nome no parque
-                if (await NomeTrilhaExisteNoParqueAsync(createTrilhaDto.NomeTrilha, createTrilhaDto.IdParque))
+                if (await _trilhaRepository.NomeExistsInParqueAsync(createTrilhaDto.NomeTrilha, createTrilhaDto.IdParque))
                 {
                     throw new InvalidOperationException("Já existe uma trilha com este nome no parque");
                 }
@@ -140,25 +96,22 @@ namespace BaitacaConnect.Services
                     Ativo = true
                 };
 
-                _context.Trilhas.Add(trilha);
-                await _context.SaveChangesAsync();
-
-                // Buscar o parque para retornar o nome
-                var parque = await _context.Parques.FindAsync(createTrilhaDto.IdParque);
+                var trilhaCriada = await _trilhaRepository.CreateAsync(trilha);
+                var parque = await _parqueRepository.GetByIdAsync(createTrilhaDto.IdParque);
 
                 return new TrilhaResponseDto
                 {
-                    IdTrilha = trilha.IdTrilha,
-                    IdParque = trilha.IdParque,
+                    IdTrilha = trilhaCriada.IdTrilha,
+                    IdParque = trilhaCriada.IdParque,
                     NomeParque = parque?.NomeParque ?? "",
-                    NomeTrilha = trilha.NomeTrilha,
-                    DescricaoTrilha = trilha.DescricaoTrilha,
-                    DificuldadeTrilha = trilha.DificuldadeTrilha,
-                    DistanciaKm = trilha.DistanciaKm,
-                    TempoEstimadoMinutos = trilha.TempoEstimadoMinutos,
-                    CapacidadeMaxima = trilha.CapacidadeMaxima,
-                    CoordenadasTrilha = trilha.CoordenadasTrilha,
-                    Ativo = trilha.Ativo,
+                    NomeTrilha = trilhaCriada.NomeTrilha,
+                    DescricaoTrilha = trilhaCriada.DescricaoTrilha,
+                    DificuldadeTrilha = trilhaCriada.DificuldadeTrilha,
+                    DistanciaKm = trilhaCriada.DistanciaKm,
+                    TempoEstimadoMinutos = trilhaCriada.TempoEstimadoMinutos,
+                    CapacidadeMaxima = trilhaCriada.CapacidadeMaxima,
+                    CoordenadasTrilha = trilhaCriada.CoordenadasTrilha,
+                    Ativo = trilhaCriada.Ativo,
                     TotalPontosInteresse = 0,
                     TotalEspeciesFaunaFlora = 0,
                     ReservasHoje = 0,
@@ -177,16 +130,15 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> AtualizarTrilhaAsync(int id, UpdateTrilhaDto updateTrilhaDto)
         {
-            var trilha = await _context.Trilhas.FindAsync(id);
+            var trilha = await _trilhaRepository.GetByIdAsync(id);
 
             if (trilha == null)
                 return false;
 
-            // Verificar se o novo nome já está em uso por outra trilha no mesmo parque
             if (!string.IsNullOrEmpty(updateTrilhaDto.NomeTrilha) && 
                 updateTrilhaDto.NomeTrilha != trilha.NomeTrilha)
             {
-                if (await NomeTrilhaExisteNoParqueAsync(updateTrilhaDto.NomeTrilha, trilha.IdParque))
+                if (await _trilhaRepository.NomeExistsInParqueAsync(updateTrilhaDto.NomeTrilha, trilha.IdParque))
                 {
                     throw new InvalidOperationException("Já existe uma trilha com este nome no parque");
                 }
@@ -219,7 +171,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _trilhaRepository.UpdateAsync(trilha);
                 return true;
             }
             catch
@@ -230,7 +182,7 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> AtivarTrilhaAsync(int id)
         {
-            var trilha = await _context.Trilhas.FindAsync(id);
+            var trilha = await _trilhaRepository.GetByIdAsync(id);
 
             if (trilha == null)
                 return false;
@@ -239,7 +191,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _trilhaRepository.UpdateAsync(trilha);
                 return true;
             }
             catch
@@ -250,7 +202,7 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> DesativarTrilhaAsync(int id)
         {
-            var trilha = await _context.Trilhas.FindAsync(id);
+            var trilha = await _trilhaRepository.GetByIdAsync(id);
 
             if (trilha == null)
                 return false;
@@ -259,7 +211,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _trilhaRepository.UpdateAsync(trilha);
                 return true;
             }
             catch
@@ -270,118 +222,97 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> TrilhaExisteAsync(int id)
         {
-            return await _context.Trilhas.AnyAsync(t => t.IdTrilha == id);
+            return await _trilhaRepository.ExistsAsync(id);
         }
 
         public async Task<bool> TrilhaAtivaAsync(int id)
         {
-            var trilha = await _context.Trilhas.FindAsync(id);
-            return trilha?.Ativo ?? false;
+            return await _trilhaRepository.IsActiveAsync(id);
         }
 
         public async Task<bool> NomeTrilhaExisteNoParqueAsync(string nome, int idParque)
         {
-            return await _context.Trilhas.AnyAsync(t => t.NomeTrilha == nome && t.IdParque == idParque);
+            return await _trilhaRepository.NomeExistsInParqueAsync(nome, idParque);
         }
 
         public async Task<int> GetCapacidadeTrilhaAsync(int id)
         {
-            var trilha = await _context.Trilhas.FindAsync(id);
-            return trilha?.CapacidadeMaxima ?? 0;
+            return await _trilhaRepository.GetCapacidadeAsync(id);
         }
 
         public async Task<IEnumerable<TrilhaResumoDto>> GetTrilhasPorParqueAsync(int idParque)
         {
-            // Primeiro busca os dados básicos do banco
-            var trilhasDb = await _context.Trilhas
-                .Where(t => t.IdParque == idParque)
-                .Select(t => new
-                {
-                    t.IdTrilha,
-                    t.NomeTrilha,
-                    t.DificuldadeTrilha,
-                    t.DistanciaKm,
-                    t.TempoEstimadoMinutos,
-                    t.CapacidadeMaxima,
-                    t.Ativo
-                })
-                .OrderBy(t => t.NomeTrilha)
-                .ToListAsync();
+            var trilhas = await _trilhaRepository.GetByParqueAsync(idParque);
 
-            // Depois calcula a ocupação atual para cada trilha
-            var trilhasDtos = new List<TrilhaResumoDto>();
-            
-            foreach (var trilha in trilhasDb)
+            var trilhasDto = new List<TrilhaResumoDto>();
+            foreach (var t in trilhas)
             {
-                trilhasDtos.Add(new TrilhaResumoDto
+                trilhasDto.Add(new TrilhaResumoDto
                 {
-                    IdTrilha = trilha.IdTrilha,
-                    NomeTrilha = trilha.NomeTrilha,
-                    DificuldadeTrilha = trilha.DificuldadeTrilha,
-                    DistanciaKm = trilha.DistanciaKm,
-                    TempoEstimadoMinutos = trilha.TempoEstimadoMinutos,
-                    CapacidadeMaxima = trilha.CapacidadeMaxima,
-                    Ativo = trilha.Ativo,
-                    OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha),
-                    Disponivel = trilha.Ativo
+                    IdTrilha = t.IdTrilha,
+                    NomeTrilha = t.NomeTrilha,
+                    DificuldadeTrilha = t.DificuldadeTrilha,
+                    DistanciaKm = t.DistanciaKm,
+                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
+                    CapacidadeMaxima = t.CapacidadeMaxima,
+                    Ativo = t.Ativo,
+                    OcupacaoAtual = await CalcularOcupacaoAtual(t.IdTrilha),
+                    Disponivel = t.Ativo
                 });
             }
-
-            return trilhasDtos;
+            
+            return trilhasDto;
         }
 
         public async Task<IEnumerable<TrilhaComMapaDto>> GetTrilhasComMapaAsync(int? idParque = null)
         {
-            var query = _context.Trilhas
-                .Include(t => t.PontosInteresse)
-                .Where(t => t.Ativo);
-
+            IEnumerable<Trilha> trilhas;
+            
             if (idParque.HasValue)
             {
-                query = query.Where(t => t.IdParque == idParque.Value);
+                trilhas = await _trilhaRepository.GetByParqueAsync(idParque.Value);
+                trilhas = trilhas.Where(t => t.Ativo);
+            }
+            else
+            {
+                trilhas = await _trilhaRepository.GetAtivasAsync();
             }
 
-            return await query
-                .Select(t => new TrilhaComMapaDto
+            return trilhas.Select(t => new TrilhaComMapaDto
+            {
+                IdTrilha = t.IdTrilha,
+                NomeTrilha = t.NomeTrilha,
+                DescricaoTrilha = t.DescricaoTrilha,
+                DificuldadeTrilha = t.DificuldadeTrilha,
+                DistanciaKm = t.DistanciaKm,
+                TempoEstimadoMinutos = t.TempoEstimadoMinutos,
+                CoordenadasTrilha = t.CoordenadasTrilha,
+                PontosInteresse = t.PontosInteresse.Select(pi => new PontoInteresseResumoDto
                 {
-                    IdTrilha = t.IdTrilha,
-                    NomeTrilha = t.NomeTrilha,
-                    DescricaoTrilha = t.DescricaoTrilha,
-                    DificuldadeTrilha = t.DificuldadeTrilha,
-                    DistanciaKm = t.DistanciaKm,
-                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
-                    CoordenadasTrilha = t.CoordenadasTrilha,
-                    PontosInteresse = t.PontosInteresse.Select(pi => new PontoInteresseResumoDto
-                    {
-                        IdParque = pi.IdParque,
-                        IdTrilha = pi.IdTrilha,
-                        NomePontoInteresse = pi.NomePontoInteresse,
-                        DescricaoPontoInteresse = pi.DescricaoPontoInteresse,
-                        Tipo = pi.Tipo,
-                        Coordenadas = pi.Coordenadas
-                    }).ToList()
-                })
-                .ToListAsync();
+                    IdParque = pi.IdParque,
+                    IdTrilha = pi.IdTrilha,
+                    NomePontoInteresse = pi.NomePontoInteresse,
+                    DescricaoPontoInteresse = pi.DescricaoPontoInteresse,
+                    Tipo = pi.Tipo,
+                    Coordenadas = pi.Coordenadas
+                }).ToList()
+            }).ToList();
         }
 
         public async Task<bool> ValidarCapacidadeTrilhaAsync(int id, int numeroVisitantes)
         {
-            var capacidade = await GetCapacidadeTrilhaAsync(id);
+            var capacidade = await _trilhaRepository.GetCapacidadeAsync(id);
             
             if (capacidade == 0)
-                return true; // Sem limite de capacidade
+                return true;
 
-            var ocupacaoAtual = CalcularOcupacaoAtual(id);
+            var ocupacaoAtual = await CalcularOcupacaoAtual(id);
             return (ocupacaoAtual + numeroVisitantes) <= capacidade;
         }
 
         public async Task<EstatisticasTrilhaDto> GetEstatisticasTrilhaAsync(int id)
         {
-            var trilha = await _context.Trilhas
-                .Include(t => t.Parque)
-                .Include(t => t.Reservas)
-                .Include(t => t.PontosInteresse)
-                .FirstOrDefaultAsync(t => t.IdTrilha == id);
+            var trilha = await _trilhaRepository.GetByIdAsync(id);
 
             if (trilha == null)
                 throw new ArgumentException("Trilha não encontrada");
@@ -399,7 +330,7 @@ namespace BaitacaConnect.Services
                 ReservasHoje = trilha.Reservas.Count(r => DateOnly.FromDateTime(r.DataVisita.ToDateTime(TimeOnly.MinValue)) == DateOnly.FromDateTime(agora)),
                 ReservasMesAtual = trilha.Reservas.Count(r => r.DataVisita.ToDateTime(TimeOnly.MinValue) >= inicioMes),
                 TotalPontosInteresse = trilha.PontosInteresse.Count,
-                TotalEspeciesFaunaFlora = 0, // Removido pois FaunaFlora não existe na trilha
+                TotalEspeciesFaunaFlora = 0,
                 CapacidadeMaxima = trilha.CapacidadeMaxima ?? 0,
                 TaxaOcupacaoMedia = CalcularTaxaOcupacaoMedia(trilha.Reservas.ToList(), trilha.CapacidadeMaxima ?? 0),
                 DistanciaKm = trilha.DistanciaKm,
@@ -410,50 +341,31 @@ namespace BaitacaConnect.Services
 
         public async Task<IEnumerable<TrilhaResumoDto>> GetTrilhasPorDificuldadeAsync(string dificuldade)
         {
-            // Primeiro busca os dados básicos do banco
-            var trilhasDb = await _context.Trilhas
-                .Where(t => t.DificuldadeTrilha == dificuldade && t.Ativo)
-                .Select(t => new
-                {
-                    t.IdTrilha,
-                    t.NomeTrilha,
-                    t.DificuldadeTrilha,
-                    t.DistanciaKm,
-                    t.TempoEstimadoMinutos,
-                    t.CapacidadeMaxima,
-                    t.Ativo
-                })
-                .OrderBy(t => t.NomeTrilha)
-                .ToListAsync();
+            var trilhas = await _trilhaRepository.GetByDificuldadeAsync(dificuldade);
 
-            // Depois calcula a ocupação atual para cada trilha
-            var trilhasDtos = new List<TrilhaResumoDto>();
-            
-            foreach (var trilha in trilhasDb)
+            var trilhasDto = new List<TrilhaResumoDto>();
+            foreach (var t in trilhas)
             {
-                trilhasDtos.Add(new TrilhaResumoDto
+                trilhasDto.Add(new TrilhaResumoDto
                 {
-                    IdTrilha = trilha.IdTrilha,
-                    NomeTrilha = trilha.NomeTrilha,
-                    DificuldadeTrilha = trilha.DificuldadeTrilha,
-                    DistanciaKm = trilha.DistanciaKm,
-                    TempoEstimadoMinutos = trilha.TempoEstimadoMinutos,
-                    CapacidadeMaxima = trilha.CapacidadeMaxima,
-                    Ativo = trilha.Ativo,
-                    OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha),
+                    IdTrilha = t.IdTrilha,
+                    NomeTrilha = t.NomeTrilha,
+                    DificuldadeTrilha = t.DificuldadeTrilha,
+                    DistanciaKm = t.DistanciaKm,
+                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
+                    CapacidadeMaxima = t.CapacidadeMaxima,
+                    Ativo = t.Ativo,
+                    OcupacaoAtual = await CalcularOcupacaoAtual(t.IdTrilha),
                     Disponivel = true
                 });
             }
-
-            return trilhasDtos;
+            
+            return trilhasDto;
         }
 
         public async Task<IEnumerable<TrilhaResumoDto>> GetTrilhasDisponiveisAsync(DateOnly data, int numeroVisitantes)
         {
-            var trilhas = await _context.Trilhas
-                .Where(t => t.Ativo)
-                .Include(t => t.Reservas)
-                .ToListAsync();
+            var trilhas = await _trilhaRepository.GetWithReservasByDateAsync(data);
 
             var trilhasDisponiveis = new List<TrilhaResumoDto>();
 
@@ -486,11 +398,16 @@ namespace BaitacaConnect.Services
         }
 
         // Métodos auxiliares
-        private int CalcularOcupacaoAtual(int idTrilha)
+        private async Task<int> CalcularOcupacaoAtual(int idTrilha)
         {
             var hoje = DateOnly.FromDateTime(DateTime.Now);
-            return _context.Reservas
-                .Where(r => r.IdTrilha == idTrilha && r.DataVisita == hoje && r.Status == "ativa")
+            var trilhas = await _trilhaRepository.GetWithReservasByDateAsync(hoje);
+            var trilha = trilhas.FirstOrDefault(t => t.IdTrilha == idTrilha);
+            
+            if (trilha == null) return 0;
+            
+            return trilha.Reservas
+                .Where(r => r.DataVisita == hoje && r.Status == "ativa")
                 .Sum(r => r.NumeroVisitantes);
         }
 

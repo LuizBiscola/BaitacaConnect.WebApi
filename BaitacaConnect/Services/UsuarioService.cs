@@ -1,8 +1,7 @@
-using Microsoft.EntityFrameworkCore;
-using BaitacaConnect.Data;
 using BaitacaConnect.Models;
 using BaitacaConnect.Models.DTOs;
 using BaitacaConnect.Services.Interfaces;
+using BaitacaConnect.Repositories.Interfaces;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -10,51 +9,31 @@ namespace BaitacaConnect.Services
 {
     public class UsuarioService : IUsuarioService
     {
-        private readonly BaitacaDbContext _context;
+        private readonly IUsuarioRepository _usuarioRepository;
 
-        public UsuarioService(BaitacaDbContext context)
+        public UsuarioService(IUsuarioRepository usuarioRepository)
         {
-            _context = context;
+            _usuarioRepository = usuarioRepository;
         }
 
         public async Task<IEnumerable<UsuarioResumoDto>> GetUsuariosAsync(string? filtroNome, string? filtroTipo, bool? ativo)
         {
-            var query = _context.Usuarios.AsQueryable();
+            var usuarios = await _usuarioRepository.GetWithFiltersAsync(filtroNome, filtroTipo, ativo);
 
-            if (!string.IsNullOrEmpty(filtroNome))
+            return usuarios.Select(u => new UsuarioResumoDto
             {
-                query = query.Where(u => u.NomeUsuario.Contains(filtroNome));
-            }
-
-            if (!string.IsNullOrEmpty(filtroTipo))
-            {
-                query = query.Where(u => u.TipoUsuario == filtroTipo);
-            }
-
-            if (ativo.HasValue)
-            {
-                query = query.Where(u => u.Ativo == ativo.Value);
-            }
-
-            return await query
-                .Select(u => new UsuarioResumoDto
-                {
-                    IdUsuario = u.IdUsuario,
-                    NomeUsuario = u.NomeUsuario,
-                    EmailUsuario = u.EmailUsuario,
-                    TipoUsuario = u.TipoUsuario,
-                    Ativo = u.Ativo,
-                    DataCriacao = u.DataCriacao
-                })
-                .OrderBy(u => u.NomeUsuario)
-                .ToListAsync();
+                IdUsuario = u.IdUsuario,
+                NomeUsuario = u.NomeUsuario,
+                EmailUsuario = u.EmailUsuario,
+                TipoUsuario = u.TipoUsuario,
+                Ativo = u.Ativo,
+                DataCriacao = u.DataCriacao
+            }).ToList();
         }
 
         public async Task<UsuarioResponseDto?> GetUsuarioByIdAsync(int id)
         {
-            var usuario = await _context.Usuarios
-                .Include(u => u.Reservas)
-                .FirstOrDefaultAsync(u => u.IdUsuario == id);
+            var usuario = await _usuarioRepository.GetByIdAsync(id);
 
             if (usuario == null)
                 return null;
@@ -76,9 +55,7 @@ namespace BaitacaConnect.Services
 
         public async Task<UsuarioResponseDto?> GetUsuarioByEmailAsync(string email)
         {
-            var usuario = await _context.Usuarios
-                .Include(u => u.Reservas)
-                .FirstOrDefaultAsync(u => u.EmailUsuario == email);
+            var usuario = await _usuarioRepository.GetByEmailAsync(email);
 
             if (usuario == null)
                 return null;
@@ -100,14 +77,14 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> EmailExisteAsync(string email)
         {
-            return await _context.Usuarios.AnyAsync(u => u.EmailUsuario == email);
+            return await _usuarioRepository.EmailExistsAsync(email);
         }
 
         public async Task<bool> ValidarSenhaAsync(int id, string senha)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _usuarioRepository.GetByIdAsync(id);
 
-            if (usuario == null || !usuario.Ativo)
+            if (usuario == null || !usuario.Ativo || string.IsNullOrEmpty(usuario.SenhaUsuario))
                 return false;
 
             return VerificarSenha(senha, usuario.SenhaUsuario);
@@ -115,9 +92,9 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> ValidarSenhaByEmailAsync(string email, string senha)
         {
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.EmailUsuario == email);
+            var usuario = await _usuarioRepository.GetByEmailAsync(email);
 
-            if (usuario == null || !usuario.Ativo)
+            if (usuario == null || !usuario.Ativo || string.IsNullOrEmpty(usuario.SenhaUsuario))
                 return false;
 
             return VerificarSenha(senha, usuario.SenhaUsuario);
@@ -125,7 +102,7 @@ namespace BaitacaConnect.Services
 
         public async Task<UsuarioResponseDto> CriarUsuarioAsync(CreateUsuarioDto createUsuarioDto)
         {
-            if (await EmailExisteAsync(createUsuarioDto.EmailUsuario))
+            if (await _usuarioRepository.EmailExistsAsync(createUsuarioDto.EmailUsuario))
             {
                 throw new InvalidOperationException("Email já está em uso");
             }
@@ -142,19 +119,18 @@ namespace BaitacaConnect.Services
                 Ativo = true
             };
 
-            _context.Usuarios.Add(usuario);
-            await _context.SaveChangesAsync();
+            var usuarioCriado = await _usuarioRepository.CreateAsync(usuario);
 
             return new UsuarioResponseDto
             {
-                IdUsuario = usuario.IdUsuario,
-                NomeUsuario = usuario.NomeUsuario,
-                EmailUsuario = usuario.EmailUsuario,
-                TelefoneUsuario = usuario.TelefoneUsuario,
-                TipoUsuario = usuario.TipoUsuario,
-                DataCriacao = usuario.DataCriacao,
-                Ativo = usuario.Ativo,
-                IdadeUsuario = usuario.IdadeUsuario,
+                IdUsuario = usuarioCriado.IdUsuario,
+                NomeUsuario = usuarioCriado.NomeUsuario,
+                EmailUsuario = usuarioCriado.EmailUsuario,
+                TelefoneUsuario = usuarioCriado.TelefoneUsuario,
+                TipoUsuario = usuarioCriado.TipoUsuario,
+                DataCriacao = usuarioCriado.DataCriacao,
+                Ativo = usuarioCriado.Ativo,
+                IdadeUsuario = usuarioCriado.IdadeUsuario,
                 TotalReservas = 0,
                 ReservasAtivas = 0
             };
@@ -162,16 +138,15 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> AtualizarUsuarioAsync(int id, UpdateUsuarioDto updateUsuarioDto)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _usuarioRepository.GetByIdAsync(id);
 
             if (usuario == null)
                 return false;
 
-            // Verificar se o novo email já está em uso por outro usuário
             if (!string.IsNullOrEmpty(updateUsuarioDto.EmailUsuario) && 
                 updateUsuarioDto.EmailUsuario != usuario.EmailUsuario)
             {
-                if (await EmailExisteAsync(updateUsuarioDto.EmailUsuario))
+                if (await _usuarioRepository.EmailExistsAsync(updateUsuarioDto.EmailUsuario))
                 {
                     throw new InvalidOperationException("Email já está em uso");
                 }
@@ -184,7 +159,7 @@ namespace BaitacaConnect.Services
             if (!string.IsNullOrEmpty(updateUsuarioDto.EmailUsuario))
                 usuario.EmailUsuario = updateUsuarioDto.EmailUsuario;
             
-            if (updateUsuarioDto.TelefoneUsuario != null)
+            if (!string.IsNullOrEmpty(updateUsuarioDto.TelefoneUsuario))
                 usuario.TelefoneUsuario = updateUsuarioDto.TelefoneUsuario;
             
             if (!string.IsNullOrEmpty(updateUsuarioDto.TipoUsuario))
@@ -198,7 +173,27 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _usuarioRepository.UpdateAsync(usuario);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> AtualizarSenhaAsync(int id, string senhaAtual, string novaSenha)
+        {
+            var usuario = await _usuarioRepository.GetByIdAsync(id);
+
+            if (usuario == null || string.IsNullOrEmpty(usuario.SenhaUsuario) || !VerificarSenha(senhaAtual, usuario.SenhaUsuario))
+                return false;
+
+            usuario.SenhaUsuario = HashSenha(novaSenha);
+
+            try
+            {
+                await _usuarioRepository.UpdateAsync(usuario);
                 return true;
             }
             catch
@@ -209,42 +204,21 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> AlterarSenhaAsync(int id, AlterarSenhaDto alterarSenhaDto)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
-
-            if (usuario == null || !usuario.Ativo)
-                return false;
-
-            if (!VerificarSenha(alterarSenhaDto.SenhaAtual, usuario.SenhaUsuario))
-                return false;
-
-            usuario.SenhaUsuario = HashSenha(alterarSenhaDto.NovaSenha);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return await AtualizarSenhaAsync(id, alterarSenhaDto.SenhaAtual, alterarSenhaDto.NovaSenha);
         }
 
         public async Task<bool> AlterarSenhaByEmailAsync(AlterarSenhaComEmailDto alterarSenhaDto)
         {
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.EmailUsuario == alterarSenhaDto.EmailUsuario);
+            var usuario = await _usuarioRepository.GetByEmailAsync(alterarSenhaDto.EmailUsuario);
 
-            if (usuario == null || !usuario.Ativo)
-                return false;
-
-            if (!VerificarSenha(alterarSenhaDto.SenhaAtual, usuario.SenhaUsuario))
+            if (usuario == null || string.IsNullOrEmpty(usuario.SenhaUsuario) || !VerificarSenha(alterarSenhaDto.SenhaAtual, usuario.SenhaUsuario))
                 return false;
 
             usuario.SenhaUsuario = HashSenha(alterarSenhaDto.NovaSenha);
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _usuarioRepository.UpdateAsync(usuario);
                 return true;
             }
             catch
@@ -255,7 +229,7 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> AtivarUsuarioAsync(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _usuarioRepository.GetByIdAsync(id);
 
             if (usuario == null)
                 return false;
@@ -264,7 +238,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _usuarioRepository.UpdateAsync(usuario);
                 return true;
             }
             catch
@@ -275,7 +249,7 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> DesativarUsuarioAsync(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _usuarioRepository.GetByIdAsync(id);
 
             if (usuario == null)
                 return false;
@@ -284,7 +258,7 @@ namespace BaitacaConnect.Services
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _usuarioRepository.UpdateAsync(usuario);
                 return true;
             }
             catch
@@ -295,30 +269,27 @@ namespace BaitacaConnect.Services
 
         public async Task<bool> UsuarioExisteAsync(int id)
         {
-            return await _context.Usuarios.AnyAsync(u => u.IdUsuario == id);
+            return await _usuarioRepository.ExistsAsync(id);
         }
 
         public async Task<bool> UsuarioAtivoAsync(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
-            return usuario?.Ativo ?? false;
+            return await _usuarioRepository.IsActiveAsync(id);
         }
 
-        // Métodos auxiliares para hash de senha
+        // Métodos auxiliares para criptografia
         private string HashSenha(string senha)
         {
             using var sha256 = SHA256.Create();
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(senha));
-            return Convert.ToBase64String(hashedBytes);
+            var bytes = Encoding.UTF8.GetBytes(senha);
+            var hash = sha256.ComputeHash(bytes);
+            return Convert.ToBase64String(hash);
         }
 
-        private bool VerificarSenha(string senha, string? senhaHash)
+        private bool VerificarSenha(string senha, string hashSenha)
         {
-            if (string.IsNullOrEmpty(senhaHash))
-                return false;
-
             var hashSenhaInput = HashSenha(senha);
-            return hashSenhaInput == senhaHash;
+            return hashSenhaInput == hashSenha;
         }
     }
 }
