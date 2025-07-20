@@ -42,7 +42,7 @@ namespace BaitacaConnect.Models
         public DateTime? CheckOut { get; set; }
 
         [Column("data_criacao")]
-        public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
+        public DateTime DataCriacao { get; set; } = DateTime.Now;
 
         // Navigation Properties
         [ForeignKey("IdUsuario")]

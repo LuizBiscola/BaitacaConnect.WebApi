@@ -31,7 +31,7 @@ namespace BaitacaConnect.Models
         public string TipoUsuario { get; set; } = "visitante";
 
         [Column("data_criacao")]
-        public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
+        public DateTime DataCriacao { get; set; } = DateTime.Now;
 
         [Column("ativo")]
         public bool Ativo { get; set; } = true;

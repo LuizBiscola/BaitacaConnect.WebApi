@@ -25,7 +25,7 @@ namespace BaitacaConnect.Models
         public string? ProblemasEncontrados { get; set; }
 
         [Column("data_relatorio")]
-        public DateTime DataRelatorio { get; set; } = DateTime.UtcNow;
+        public DateTime DataRelatorio { get; set; } = DateTime.Now;
 
         // Navigation Properties
         [ForeignKey("IdReserva")]

@@ -25,7 +25,7 @@ namespace BaitacaConnect.Models.DTOs
         public string? Message { get; set; }
         public T? Data { get; set; }
         public List<string>? Errors { get; set; }
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
     }
 
     public class ApiResponseDto : ApiResponseDto<object>
@@ -74,7 +74,7 @@ namespace BaitacaConnect.Models.DTOs
     public class HealthCheckDto
     {
         public string Status { get; set; } = string.Empty;
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
         public string Version { get; set; } = string.Empty;
         public Dictionary<string, object> Services { get; set; } = new();
     }
