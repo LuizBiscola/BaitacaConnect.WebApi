@@ -101,6 +101,43 @@ namespace BaitacaConnect.Models.DTOs
         public string ConfirmarNovaSenha { get; set; } = string.Empty;
     }
 
+    public class ValidarSenhaDto
+    {
+        [Required]
+        [MinLength(8)]
+        public string Senha { get; set; } = string.Empty;
+    }
+
+    public class ValidarSenhaComEmailDto
+    {
+        [Required]
+        [EmailAddress]
+        public string EmailUsuario { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(8)]
+        public string Senha { get; set; } = string.Empty;
+    }
+
+    public class AlterarSenhaComEmailDto
+    {
+        [Required]
+        [EmailAddress]
+        public string EmailUsuario { get; set; } = string.Empty;
+
+        [Required]
+        public string SenhaAtual { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(8)]
+        [MaxLength(100)]
+        public string NovaSenha { get; set; } = string.Empty;
+
+        [Required]
+        [Compare("NovaSenha")]
+        public string ConfirmarNovaSenha { get; set; } = string.Empty;
+    }
+
     public class UsuarioPerfilDto
     {
         public int IdUsuario { get; set; }

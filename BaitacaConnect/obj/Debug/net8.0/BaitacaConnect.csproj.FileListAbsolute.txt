@@ -103,10 +103,6 @@ C:\Users\luizmartins\RiderProjects\BaitacaConnect\baitacaconnect\bin\Debug\net8.
 C:\Users\luizmartins\RiderProjects\BaitacaConnect\baitacaconnect\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.Workspaces.resources.dll
 C:\Users\luizmartins\RiderProjects\BaitacaConnect\baitacaconnect\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.resources.dll
 C:\Users\luizmartins\RiderProjects\BaitacaConnect\baitacaconnect\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.resources.dll
-C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaConnect.dll
-C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\refint\BaitacaConnect.dll
-C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaConnect.pdb
-C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\appsettings.json
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\BaitacaConnect.exe
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\BaitacaConnect.deps.json
@@ -207,5 +203,8 @@ C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\staticwebassets.pack.json
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\scopedcss\bundle\BaitacaConnect.styles.css
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaC.AC0A65EB.Up2Date
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaConnect.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\refint\BaitacaConnect.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaConnect.pdb
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaConnect.genruntimeconfig.cache
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\ref\BaitacaConnect.dll

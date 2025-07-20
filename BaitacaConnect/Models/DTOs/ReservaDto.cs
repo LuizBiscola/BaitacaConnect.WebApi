@@ -65,7 +65,7 @@ namespace BaitacaConnect.Models.DTOs
         [Required]
         public int IdReserva { get; set; }
         
-        public DateTime? HorarioCheckIn { get; set; } = DateTime.UtcNow;
+        public DateTime? HorarioCheckIn { get; set; } = DateTime.Now;
     }
 
     public class CheckOutDto
@@ -73,7 +73,7 @@ namespace BaitacaConnect.Models.DTOs
         [Required]
         public int IdReserva { get; set; }
         
-        public DateTime? HorarioCheckOut { get; set; } = DateTime.UtcNow;
+        public DateTime? HorarioCheckOut { get; set; } = DateTime.Now;
     }
 
     public class ReservaCalendarioDto

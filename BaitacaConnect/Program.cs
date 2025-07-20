@@ -1,4 +1,6 @@
 using BaitacaConnect.Data;
+using BaitacaConnect.Services;
+using BaitacaConnect.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Configuração do Entity Framework com PostgreSQL
 builder.Services.AddDbContext<BaitacaDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Registrar Services no DI Container
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IParqueService, ParqueService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -30,5 +37,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-//teste user desktop

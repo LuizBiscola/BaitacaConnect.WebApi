@@ -21,9 +21,4 @@
       </Content>
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Controllers\" />
-      <Folder Include="Services\Interfaces\" />
-    </ItemGroup>
-
 </Project>

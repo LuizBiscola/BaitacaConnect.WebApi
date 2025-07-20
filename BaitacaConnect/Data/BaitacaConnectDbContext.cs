@@ -575,8 +575,8 @@ namespace BaitacaConnect.Data
     public class ListIntValueComparer : Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<int>>
     {
         public ListIntValueComparer() : base(
-            (l1, l2) => l1.SequenceEqual(l2),
-            l => l.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())))
+            (l1, l2) => (l1 == null && l2 == null) || (l1 != null && l2 != null && l1.SequenceEqual(l2)),
+            l => l == null ? 0 : l.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())))
         {
         }
     }
