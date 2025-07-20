@@ -13,6 +13,7 @@ builder.Services.AddDbContext<BaitacaDbContext>(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IParqueService, ParqueService>();
+builder.Services.AddScoped<ITrilhaService, TrilhaService>();
 
 // Add services to the container.
 builder.Services.AddControllers();
