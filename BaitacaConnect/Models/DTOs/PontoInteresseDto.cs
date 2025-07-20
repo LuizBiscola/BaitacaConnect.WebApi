@@ -59,9 +59,9 @@ namespace BaitacaConnect.Models.DTOs
         public int IdParque { get; set; }
         public int IdTrilha { get; set; }
         public string NomePontoInteresse { get; set; } = string.Empty;
+        public string? DescricaoPontoInteresse { get; set; }
         public string? Tipo { get; set; }
         public string? Coordenadas { get; set; }
-        public int? OrdemNaTrilha { get; set; }
     }
 
     public class PontoInteresseMapaDto

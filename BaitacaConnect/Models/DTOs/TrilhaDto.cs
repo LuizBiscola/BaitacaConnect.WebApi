@@ -16,7 +16,7 @@ namespace BaitacaConnect.Models.DTOs
         [MaxLength(20)]
         public string? DificuldadeTrilha { get; set; }
 
-        [Range(0.1, 1000)]
+        [Range(0.1, 1000.0)]
         public decimal? DistanciaKm { get; set; }
 
         [Range(1, 1440)]

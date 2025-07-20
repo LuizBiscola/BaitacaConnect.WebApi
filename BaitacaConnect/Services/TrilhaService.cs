@@ -41,21 +41,41 @@ namespace BaitacaConnect.Services
                 query = query.Where(t => t.IdParque == idParque.Value);
             }
 
-            return await query
-                .Select(t => new TrilhaResumoDto
+            // Primeiro busca os dados básicos do banco
+            var trilhasDb = await query
+                .Select(t => new
                 {
-                    IdTrilha = t.IdTrilha,
-                    NomeTrilha = t.NomeTrilha,
-                    DificuldadeTrilha = t.DificuldadeTrilha,
-                    DistanciaKm = t.DistanciaKm,
-                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
-                    CapacidadeMaxima = t.CapacidadeMaxima,
-                    Ativo = t.Ativo,
-                    OcupacaoAtual = CalcularOcupacaoAtual(t.IdTrilha),
-                    Disponivel = t.Ativo
+                    t.IdTrilha,
+                    t.NomeTrilha,
+                    t.DificuldadeTrilha,
+                    t.DistanciaKm,
+                    t.TempoEstimadoMinutos,
+                    t.CapacidadeMaxima,
+                    t.Ativo
                 })
                 .OrderBy(t => t.NomeTrilha)
                 .ToListAsync();
+
+            // Depois calcula a ocupação atual para cada trilha
+            var trilhasDtos = new List<TrilhaResumoDto>();
+            
+            foreach (var trilha in trilhasDb)
+            {
+                trilhasDtos.Add(new TrilhaResumoDto
+                {
+                    IdTrilha = trilha.IdTrilha,
+                    NomeTrilha = trilha.NomeTrilha,
+                    DificuldadeTrilha = trilha.DificuldadeTrilha,
+                    DistanciaKm = trilha.DistanciaKm,
+                    TempoEstimadoMinutos = trilha.TempoEstimadoMinutos,
+                    CapacidadeMaxima = trilha.CapacidadeMaxima,
+                    Ativo = trilha.Ativo,
+                    OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha),
+                    Disponivel = trilha.Ativo
+                });
+            }
+
+            return trilhasDtos;
         }
 
         public async Task<TrilhaResponseDto?> GetTrilhaByIdAsync(int id)
@@ -64,7 +84,6 @@ namespace BaitacaConnect.Services
                 .Include(t => t.Parque)
                 .Include(t => t.Reservas)
                 .Include(t => t.PontosInteresse)
-                .Include(t => t.FaunaFlora)
                 .FirstOrDefaultAsync(t => t.IdTrilha == id);
 
             if (trilha == null)
@@ -86,7 +105,7 @@ namespace BaitacaConnect.Services
                 CoordenadasTrilha = trilha.CoordenadasTrilha,
                 Ativo = trilha.Ativo,
                 TotalPontosInteresse = trilha.PontosInteresse.Count,
-                TotalEspeciesFaunaFlora = trilha.FaunaFlora.Count,
+                TotalEspeciesFaunaFlora = 0, // Removido pois FaunaFlora não existe na trilha
                 ReservasHoje = trilha.Reservas.Count(r => DateOnly.FromDateTime(r.DataVisita.ToDateTime(TimeOnly.MinValue)) == DateOnly.FromDateTime(agora)),
                 OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha)
             };
@@ -273,22 +292,42 @@ namespace BaitacaConnect.Services
 
         public async Task<IEnumerable<TrilhaResumoDto>> GetTrilhasPorParqueAsync(int idParque)
         {
-            return await _context.Trilhas
+            // Primeiro busca os dados básicos do banco
+            var trilhasDb = await _context.Trilhas
                 .Where(t => t.IdParque == idParque)
-                .Select(t => new TrilhaResumoDto
+                .Select(t => new
                 {
-                    IdTrilha = t.IdTrilha,
-                    NomeTrilha = t.NomeTrilha,
-                    DificuldadeTrilha = t.DificuldadeTrilha,
-                    DistanciaKm = t.DistanciaKm,
-                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
-                    CapacidadeMaxima = t.CapacidadeMaxima,
-                    Ativo = t.Ativo,
-                    OcupacaoAtual = CalcularOcupacaoAtual(t.IdTrilha),
-                    Disponivel = t.Ativo
+                    t.IdTrilha,
+                    t.NomeTrilha,
+                    t.DificuldadeTrilha,
+                    t.DistanciaKm,
+                    t.TempoEstimadoMinutos,
+                    t.CapacidadeMaxima,
+                    t.Ativo
                 })
                 .OrderBy(t => t.NomeTrilha)
                 .ToListAsync();
+
+            // Depois calcula a ocupação atual para cada trilha
+            var trilhasDtos = new List<TrilhaResumoDto>();
+            
+            foreach (var trilha in trilhasDb)
+            {
+                trilhasDtos.Add(new TrilhaResumoDto
+                {
+                    IdTrilha = trilha.IdTrilha,
+                    NomeTrilha = trilha.NomeTrilha,
+                    DificuldadeTrilha = trilha.DificuldadeTrilha,
+                    DistanciaKm = trilha.DistanciaKm,
+                    TempoEstimadoMinutos = trilha.TempoEstimadoMinutos,
+                    CapacidadeMaxima = trilha.CapacidadeMaxima,
+                    Ativo = trilha.Ativo,
+                    OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha),
+                    Disponivel = trilha.Ativo
+                });
+            }
+
+            return trilhasDtos;
         }
 
         public async Task<IEnumerable<TrilhaComMapaDto>> GetTrilhasComMapaAsync(int? idParque = null)
@@ -314,11 +353,12 @@ namespace BaitacaConnect.Services
                     CoordenadasTrilha = t.CoordenadasTrilha,
                     PontosInteresse = t.PontosInteresse.Select(pi => new PontoInteresseResumoDto
                     {
-                        IdPontoInteresse = pi.IdPontoInteresse,
-                        NomePonto = pi.NomePonto,
-                        DescricaoPonto = pi.DescricaoPonto,
-                        TipoPonto = pi.TipoPonto,
-                        CoordenadasPonto = pi.CoordenadasPonto
+                        IdParque = pi.IdParque,
+                        IdTrilha = pi.IdTrilha,
+                        NomePontoInteresse = pi.NomePontoInteresse,
+                        DescricaoPontoInteresse = pi.DescricaoPontoInteresse,
+                        Tipo = pi.Tipo,
+                        Coordenadas = pi.Coordenadas
                     }).ToList()
                 })
                 .ToListAsync();
@@ -341,7 +381,6 @@ namespace BaitacaConnect.Services
                 .Include(t => t.Parque)
                 .Include(t => t.Reservas)
                 .Include(t => t.PontosInteresse)
-                .Include(t => t.FaunaFlora)
                 .FirstOrDefaultAsync(t => t.IdTrilha == id);
 
             if (trilha == null)
@@ -360,7 +399,7 @@ namespace BaitacaConnect.Services
                 ReservasHoje = trilha.Reservas.Count(r => DateOnly.FromDateTime(r.DataVisita.ToDateTime(TimeOnly.MinValue)) == DateOnly.FromDateTime(agora)),
                 ReservasMesAtual = trilha.Reservas.Count(r => r.DataVisita.ToDateTime(TimeOnly.MinValue) >= inicioMes),
                 TotalPontosInteresse = trilha.PontosInteresse.Count,
-                TotalEspeciesFaunaFlora = trilha.FaunaFlora.Count,
+                TotalEspeciesFaunaFlora = 0, // Removido pois FaunaFlora não existe na trilha
                 CapacidadeMaxima = trilha.CapacidadeMaxima ?? 0,
                 TaxaOcupacaoMedia = CalcularTaxaOcupacaoMedia(trilha.Reservas.ToList(), trilha.CapacidadeMaxima ?? 0),
                 DistanciaKm = trilha.DistanciaKm,
@@ -371,22 +410,42 @@ namespace BaitacaConnect.Services
 
         public async Task<IEnumerable<TrilhaResumoDto>> GetTrilhasPorDificuldadeAsync(string dificuldade)
         {
-            return await _context.Trilhas
+            // Primeiro busca os dados básicos do banco
+            var trilhasDb = await _context.Trilhas
                 .Where(t => t.DificuldadeTrilha == dificuldade && t.Ativo)
-                .Select(t => new TrilhaResumoDto
+                .Select(t => new
                 {
-                    IdTrilha = t.IdTrilha,
-                    NomeTrilha = t.NomeTrilha,
-                    DificuldadeTrilha = t.DificuldadeTrilha,
-                    DistanciaKm = t.DistanciaKm,
-                    TempoEstimadoMinutos = t.TempoEstimadoMinutos,
-                    CapacidadeMaxima = t.CapacidadeMaxima,
-                    Ativo = t.Ativo,
-                    OcupacaoAtual = CalcularOcupacaoAtual(t.IdTrilha),
-                    Disponivel = true
+                    t.IdTrilha,
+                    t.NomeTrilha,
+                    t.DificuldadeTrilha,
+                    t.DistanciaKm,
+                    t.TempoEstimadoMinutos,
+                    t.CapacidadeMaxima,
+                    t.Ativo
                 })
                 .OrderBy(t => t.NomeTrilha)
                 .ToListAsync();
+
+            // Depois calcula a ocupação atual para cada trilha
+            var trilhasDtos = new List<TrilhaResumoDto>();
+            
+            foreach (var trilha in trilhasDb)
+            {
+                trilhasDtos.Add(new TrilhaResumoDto
+                {
+                    IdTrilha = trilha.IdTrilha,
+                    NomeTrilha = trilha.NomeTrilha,
+                    DificuldadeTrilha = trilha.DificuldadeTrilha,
+                    DistanciaKm = trilha.DistanciaKm,
+                    TempoEstimadoMinutos = trilha.TempoEstimadoMinutos,
+                    CapacidadeMaxima = trilha.CapacidadeMaxima,
+                    Ativo = trilha.Ativo,
+                    OcupacaoAtual = CalcularOcupacaoAtual(trilha.IdTrilha),
+                    Disponivel = true
+                });
+            }
+
+            return trilhasDtos;
         }
 
         public async Task<IEnumerable<TrilhaResumoDto>> GetTrilhasDisponiveisAsync(DateOnly data, int numeroVisitantes)
@@ -455,16 +514,19 @@ namespace BaitacaConnect.Services
             if (string.IsNullOrEmpty(coordenadas))
                 return null;
 
-            // Se já está no formato correto do PostgreSQL, retorna como está
-            if (coordenadas.StartsWith("(") && coordenadas.EndsWith(")"))
-                return coordenadas;
-
             try
             {
-                // Remove espaços e caracteres especiais
+                // Se for um JSON válido, retorna como está
+                if (coordenadas.StartsWith("{") && coordenadas.EndsWith("}"))
+                {
+                    // Tenta validar se é um JSON válido
+                    System.Text.Json.JsonDocument.Parse(coordenadas);
+                    return coordenadas;
+                }
+
+                // Se for coordenadas no formato lat,lng, converte para JSON
                 var coords = coordenadas.Replace(" ", "").Replace("(", "").Replace(")", "");
                 
-                // Se tem vírgula, assume formato "lat,lng"
                 if (coords.Contains(","))
                 {
                     var partes = coords.Split(',');
@@ -472,16 +534,18 @@ namespace BaitacaConnect.Services
                     {
                         if (decimal.TryParse(partes[0], out var lat) && decimal.TryParse(partes[1], out var lng))
                         {
-                            return $"({lat},{lng})";
+                            return $"{{\"latitude\": {lat}, \"longitude\": {lng}}}";
                         }
                     }
                 }
                 
-                return null;
+                // Se for uma string simples, cria um JSON básico
+                return $"{{\"descricao\": \"{coordenadas}\"}}";
             }
             catch
             {
-                return null;
+                // Se não conseguir processar, retorna um JSON com a string original
+                return $"{{\"dados\": \"{coordenadas}\"}}";
             }
         }
     }
