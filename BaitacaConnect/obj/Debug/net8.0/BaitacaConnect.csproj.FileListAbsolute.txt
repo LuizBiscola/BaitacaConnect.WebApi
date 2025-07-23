@@ -208,3 +208,11 @@ C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaConnect.pdb
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\BaitacaConnect.genruntimeconfig.cache
 C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\obj\Debug\net8.0\ref\BaitacaConnect.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
+C:\Users\bno44\RiderProjects\BaitacaConnect.WebApi\BaitacaConnect\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll

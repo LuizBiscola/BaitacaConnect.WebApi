@@ -6,6 +6,7 @@ namespace BaitacaConnect.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Tags("Auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;

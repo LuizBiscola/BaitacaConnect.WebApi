@@ -16,11 +16,12 @@ namespace BaitacaConnect.Repositories
 
         public async Task<Trilha?> GetByIdAsync(int id)
         {
-            return await _context.Trilhas
-                .Include(t => t.Parque)
-                .Include(t => t.Reservas)
-                .Include(t => t.PontosInteresse)
-                .FirstOrDefaultAsync(t => t.IdTrilha == id);
+            return await _context.Trilhas.FindAsync(id);
+        }
+
+        public async Task<Trilha?> GetTrilhaByIdAsync(int id)
+        {
+            return await _context.Trilhas.FindAsync(id);
         }
 
         public async Task<IEnumerable<Trilha>> GetAllAsync()

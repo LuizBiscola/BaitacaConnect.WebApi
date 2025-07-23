@@ -5,6 +5,7 @@ namespace BaitacaConnect.Repositories.Interfaces
     public interface IParqueRepository
     {
         Task<Parque?> GetByIdAsync(int id);
+        Task<Parque?> GetParqueByIdAsync(int id); // Adicionar método com nome usado no serviço
         Task<Parque?> GetByIdWithDetailsAsync(int id);
         Task<IEnumerable<Parque>> GetAllAsync();
         Task<IEnumerable<Parque>> GetWithFiltersAsync(string? filtroNome, bool? ativo);

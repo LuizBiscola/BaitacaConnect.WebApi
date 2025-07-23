@@ -5,6 +5,7 @@ namespace BaitacaConnect.Repositories.Interfaces
     public interface ITrilhaRepository
     {
         Task<Trilha?> GetByIdAsync(int id);
+        Task<Trilha?> GetTrilhaByIdAsync(int id); // Adicionar método com nome usado no serviço
         Task<IEnumerable<Trilha>> GetAllAsync();
         Task<IEnumerable<Trilha>> GetWithFiltersAsync(string? filtroNome, string? filtroDificuldade, bool? ativo, int? idParque);
         Task<IEnumerable<Trilha>> GetByParqueAsync(int idParque);

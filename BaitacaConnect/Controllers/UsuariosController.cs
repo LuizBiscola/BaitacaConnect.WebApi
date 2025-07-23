@@ -6,6 +6,7 @@ namespace BaitacaConnect.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Tags("Usuarios")]
     public class UsuariosController : ControllerBase
     {
         private readonly IUsuarioService _usuarioService;

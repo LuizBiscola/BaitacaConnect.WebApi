@@ -16,9 +16,12 @@ namespace BaitacaConnect.Repositories
 
         public async Task<Usuario?> GetByIdAsync(int id)
         {
-            return await _context.Usuarios
-                .Include(u => u.Reservas)
-                .FirstOrDefaultAsync(u => u.IdUsuario == id);
+            return await _context.Usuarios.FindAsync(id);
+        }
+
+        public async Task<Usuario?> GetUsuarioByIdAsync(int id)
+        {
+            return await _context.Usuarios.FindAsync(id);
         }
 
         public async Task<Usuario?> GetByEmailAsync(string email)
