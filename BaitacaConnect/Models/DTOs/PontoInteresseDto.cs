@@ -51,7 +51,7 @@ namespace BaitacaConnect.Models.DTOs
         public string? DescricaoPontoInteresse { get; set; }
         public string? Tipo { get; set; }
         public string? Coordenadas { get; set; }
-        public int? OrdemNaTrilha { get; set; }
+        public int OrdemNaTrilha { get; set; }
     }
 
     public class PontoInteresseResumoDto
@@ -71,5 +71,44 @@ namespace BaitacaConnect.Models.DTOs
         public string? Coordenadas { get; set; }
         public int? OrdemNaTrilha { get; set; }
         public string? DescricaoResumida { get; set; }
+    }
+
+    public class MapaTrilhaDto
+    {
+        public int IdTrilha { get; set; }
+        public string NomeTrilha { get; set; } = string.Empty;
+        public string? CoordenadasTrilha { get; set; }
+        public int TotalPontos { get; set; }
+        public List<PontoMapaDto> Pontos { get; set; } = new();
+    }
+
+    public class PontoMapaDto
+    {
+        public string Nome { get; set; } = string.Empty;
+        public string Tipo { get; set; } = string.Empty;
+        public string Coordenadas { get; set; } = string.Empty;
+        public string? Descricao { get; set; }
+        public int Ordem { get; set; }
+    }
+
+    public class EstatisticasPontosDto
+    {
+        public int TotalPontos { get; set; }
+        public int TotalTipos { get; set; }
+        public Dictionary<string, int> DistribuicaoPorTipo { get; set; } = new();
+        public List<string> Tipos { get; set; } = new();
+    }
+
+    public class ReordenarPontoDto
+    {
+        [Required]
+        public int IdParque { get; set; }
+        
+        [Required]
+        public string NomePonto { get; set; } = string.Empty;
+        
+        [Required]
+        [Range(1, 999)]
+        public int NovaOrdem { get; set; }
     }
 }
