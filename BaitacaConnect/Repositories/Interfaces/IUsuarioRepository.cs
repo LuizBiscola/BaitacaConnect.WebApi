@@ -6,6 +6,7 @@ namespace BaitacaConnect.Repositories.Interfaces
     public interface IUsuarioRepository
     {
         Task<Usuario?> GetByIdAsync(int id);
+        Task<Usuario?> GetUsuarioByIdAsync(int id); // Adicionar método com nome usado no serviço
         Task<Usuario?> GetByEmailAsync(string email);
         Task<IEnumerable<Usuario>> GetAllAsync();
         Task<IEnumerable<Usuario>> GetWithFiltersAsync(string? filtroNome, string? filtroTipo, bool? ativo);

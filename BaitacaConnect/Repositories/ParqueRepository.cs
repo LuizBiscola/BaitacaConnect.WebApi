@@ -19,6 +19,11 @@ namespace BaitacaConnect.Repositories
             return await _context.Parques.FindAsync(id);
         }
 
+        public async Task<Parque?> GetParqueByIdAsync(int id)
+        {
+            return await _context.Parques.FindAsync(id);
+        }
+
         public async Task<Parque?> GetByIdWithDetailsAsync(int id)
         {
             return await _context.Parques
