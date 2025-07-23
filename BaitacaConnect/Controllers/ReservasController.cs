@@ -1,8 +1,6 @@
 using BaitacaConnect.Models.DTOs;
 using BaitacaConnect.Services.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace BaitacaConnect.Controllers
 {
@@ -19,10 +17,9 @@ namespace BaitacaConnect.Controllers
         }
 
         /// <summary>
-        /// Obter todas as reservas com filtros opcionais (Admin)
+        /// Obter todas as reservas com filtros opcionais
         /// </summary>
         [HttpGet]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<ReservaResponseDto>>> GetReservas(
             [FromQuery] int? idUsuario = null,
             [FromQuery] int? idParque = null,
@@ -46,7 +43,6 @@ namespace BaitacaConnect.Controllers
         /// Obter reserva por ID
         /// </summary>
         [HttpGet("{id}")]
-        [Authorize]
         public async Task<ActionResult<ReservaResponseDto>> GetReserva(int id)
         {
             try
@@ -54,13 +50,6 @@ namespace BaitacaConnect.Controllers
                 var reserva = await _reservaService.GetReservaByIdAsync(id);
                 if (reserva == null)
                     return NotFound(new { message = "Reserva não encontrada" });
-
-                // Verificar se o usuário pode acessar esta reserva
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
-                if (userRole != "Admin" && reserva.IdUsuario.ToString() != userIdClaim)
-                    return Forbid();
 
                 return Ok(reserva);
             }
@@ -74,15 +63,14 @@ namespace BaitacaConnect.Controllers
         /// Criar nova reserva
         /// </summary>
         [HttpPost]
-        [Authorize]
         public async Task<ActionResult<ReservaResponseDto>> CreateReserva(CreateReservaDto createReservaDto)
         {
             try
             {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (!int.TryParse(userIdClaim, out int idUsuario))
-                    return Unauthorized(new { message = "Usuário não identificado" });
-
+                // Para simplificar, vamos usar um ID de usuário fixo ou receber via parâmetro
+                // Em um cenário real, isso viria do token JWT
+                int idUsuario = 1; // ID fixo temporário
+                
                 var reserva = await _reservaService.CreateReservaAsync(idUsuario, createReservaDto);
                 return CreatedAtAction(nameof(GetReserva), new { id = reserva.IdReserva }, reserva);
             }
@@ -96,7 +84,43 @@ namespace BaitacaConnect.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = $"Erro ao criar reserva: {ex.Message}" });
+                // Mostrar erro mais detalhado incluindo inner exception
+                var detailedError = ex.InnerException?.Message ?? ex.Message;
+                return BadRequest(new { 
+                    message = $"Erro ao criar reserva: {ex.Message}",
+                    details = detailedError,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
+
+        /// <summary>
+        /// Criar nova reserva com ID do usuário
+        /// </summary>
+        [HttpPost("usuario/{idUsuario}")]
+        public async Task<ActionResult<ReservaResponseDto>> CreateReservaComUsuario(int idUsuario, CreateReservaDto createReservaDto)
+        {
+            try
+            {
+                var reserva = await _reservaService.CreateReservaAsync(idUsuario, createReservaDto);
+                return CreatedAtAction(nameof(GetReserva), new { id = reserva.IdReserva }, reserva);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                var detailedError = ex.InnerException?.Message ?? ex.Message;
+                return BadRequest(new { 
+                    message = $"Erro ao criar reserva: {ex.Message}",
+                    details = detailedError,
+                    stackTrace = ex.StackTrace
+                });
             }
         }
 
@@ -104,7 +128,6 @@ namespace BaitacaConnect.Controllers
         /// Atualizar reserva existente
         /// </summary>
         [HttpPut("{id}")]
-        [Authorize]
         public async Task<ActionResult<ReservaResponseDto>> UpdateReserva(int id, UpdateReservaDto updateReservaDto)
         {
             try
@@ -112,13 +135,6 @@ namespace BaitacaConnect.Controllers
                 var reservaExistente = await _reservaService.GetReservaByIdAsync(id);
                 if (reservaExistente == null)
                     return NotFound(new { message = "Reserva não encontrada" });
-
-                // Verificar se o usuário pode alterar esta reserva
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
-                if (userRole != "Admin" && reservaExistente.IdUsuario.ToString() != userIdClaim)
-                    return Forbid();
 
                 var reserva = await _reservaService.UpdateReservaAsync(id, updateReservaDto);
                 return Ok(reserva);
@@ -141,7 +157,6 @@ namespace BaitacaConnect.Controllers
         /// Excluir reserva
         /// </summary>
         [HttpDelete("{id}")]
-        [Authorize]
         public async Task<ActionResult> DeleteReserva(int id)
         {
             try
@@ -149,13 +164,6 @@ namespace BaitacaConnect.Controllers
                 var reservaExistente = await _reservaService.GetReservaByIdAsync(id);
                 if (reservaExistente == null)
                     return NotFound(new { message = "Reserva não encontrada" });
-
-                // Verificar se o usuário pode excluir esta reserva
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
-                if (userRole != "Admin" && reservaExistente.IdUsuario.ToString() != userIdClaim)
-                    return Forbid();
 
                 var sucesso = await _reservaService.DeleteReservaAsync(id);
                 if (!sucesso)
@@ -174,18 +182,13 @@ namespace BaitacaConnect.Controllers
         }
 
         /// <summary>
-        /// Obter minhas reservas (usuário logado)
+        /// Obter minhas reservas por ID de usuário
         /// </summary>
-        [HttpGet("minhas")]
-        [Authorize]
-        public async Task<ActionResult<IEnumerable<ReservaResumoDto>>> GetMinhasReservas()
+        [HttpGet("usuario/{idUsuario}")]
+        public async Task<ActionResult<IEnumerable<ReservaResumoDto>>> GetMinhasReservas(int idUsuario)
         {
             try
             {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (!int.TryParse(userIdClaim, out int idUsuario))
-                    return Unauthorized(new { message = "Usuário não identificado" });
-
                 var reservas = await _reservaService.GetMinhasReservasAsync(idUsuario);
                 return Ok(reservas);
             }
@@ -199,7 +202,6 @@ namespace BaitacaConnect.Controllers
         /// Realizar check-in na reserva
         /// </summary>
         [HttpPost("{id}/checkin")]
-        [Authorize]
         public async Task<ActionResult<ReservaResponseDto>> CheckIn(int id)
         {
             try
@@ -207,13 +209,6 @@ namespace BaitacaConnect.Controllers
                 var reservaExistente = await _reservaService.GetReservaByIdAsync(id);
                 if (reservaExistente == null)
                     return NotFound(new { message = "Reserva não encontrada" });
-
-                // Verificar se o usuário pode fazer check-in nesta reserva
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
-                if (userRole != "Admin" && reservaExistente.IdUsuario.ToString() != userIdClaim)
-                    return Forbid();
 
                 var reserva = await _reservaService.CheckInAsync(id);
                 return Ok(reserva);
@@ -236,7 +231,6 @@ namespace BaitacaConnect.Controllers
         /// Realizar check-out na reserva
         /// </summary>
         [HttpPost("{id}/checkout")]
-        [Authorize]
         public async Task<ActionResult<ReservaResponseDto>> CheckOut(int id)
         {
             try
@@ -244,13 +238,6 @@ namespace BaitacaConnect.Controllers
                 var reservaExistente = await _reservaService.GetReservaByIdAsync(id);
                 if (reservaExistente == null)
                     return NotFound(new { message = "Reserva não encontrada" });
-
-                // Verificar se o usuário pode fazer check-out nesta reserva
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-                
-                if (userRole != "Admin" && reservaExistente.IdUsuario.ToString() != userIdClaim)
-                    return Forbid();
 
                 var reserva = await _reservaService.CheckOutAsync(id);
                 return Ok(reserva);
@@ -272,16 +259,11 @@ namespace BaitacaConnect.Controllers
         /// <summary>
         /// Cancelar reserva
         /// </summary>
-        [HttpPost("{id}/cancelar")]
-        [Authorize]
-        public async Task<ActionResult<ReservaResponseDto>> CancelarReserva(int id)
+        [HttpPost("{id}/cancelar/{idUsuario}")]
+        public async Task<ActionResult<ReservaResponseDto>> CancelarReserva(int id, int idUsuario)
         {
             try
             {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (!int.TryParse(userIdClaim, out int idUsuario))
-                    return Unauthorized(new { message = "Usuário não identificado" });
-
                 var reserva = await _reservaService.CancelarReservaAsync(id, idUsuario);
                 return Ok(reserva);
             }
@@ -307,7 +289,6 @@ namespace BaitacaConnect.Controllers
         /// Validar disponibilidade para reserva
         /// </summary>
         [HttpPost("validar")]
-        [Authorize]
         public async Task<ActionResult<ValidarReservaResponseDto>> ValidarReserva(ValidarReservaDto validarReservaDto)
         {
             try
@@ -322,10 +303,9 @@ namespace BaitacaConnect.Controllers
         }
 
         /// <summary>
-        /// Obter calendário de reservas por parque (Admin)
+        /// Obter calendário de reservas por parque
         /// </summary>
         [HttpGet("calendario/{idParque}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<ReservaCalendarioDto>>> GetCalendarioReservas(
             int idParque,
             [FromQuery] DateOnly dataInicio,

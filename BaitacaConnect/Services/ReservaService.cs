@@ -87,7 +87,7 @@ namespace BaitacaConnect.Services
                 HorarioEntrada = createReservaDto.HorarioEntrada,
                 NumeroVisitantes = createReservaDto.NumeroVisitantes,
                 Status = "ativa",
-                DataCriacao = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc)
+                DataCriacao = DateTime.Now // Removido SpecifyKind UTC
             };
 
             var reservaCriada = await _reservaRepository.CreateReservaAsync(reserva);
@@ -185,7 +185,7 @@ namespace BaitacaConnect.Services
             if (reserva.DataVisita != DateOnly.FromDateTime(DateTime.Today))
                 throw new InvalidOperationException("Check-in só pode ser realizado na data da visita");
 
-            reserva.CheckIn = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
+            reserva.CheckIn = DateTime.Now; // Removido SpecifyKind UTC
             
             var reservaAtualizada = await _reservaRepository.UpdateReservaAsync(reserva);
             return MapToReservaResponseDto(reservaAtualizada);
@@ -203,7 +203,7 @@ namespace BaitacaConnect.Services
             if (reserva.CheckOut.HasValue)
                 throw new InvalidOperationException("Check-out já foi realizado");
 
-            reserva.CheckOut = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
+            reserva.CheckOut = DateTime.Now; // Removido SpecifyKind UTC
             reserva.Status = "finalizada";
             
             var reservaAtualizada = await _reservaRepository.UpdateReservaAsync(reserva);

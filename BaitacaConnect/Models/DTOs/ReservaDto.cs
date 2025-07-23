@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace BaitacaConnect.Models.DTOs
 {
@@ -12,7 +13,23 @@ namespace BaitacaConnect.Models.DTOs
         [Required]
         public DateOnly DataVisita { get; set; }
 
-        public TimeSpan? HorarioEntrada { get; set; }
+        [JsonPropertyName("horarioEntrada")]
+        public string? HorarioEntradaString { get; set; }
+
+        [JsonIgnore]
+        public TimeSpan? HorarioEntrada 
+        { 
+            get 
+            {
+                if (string.IsNullOrEmpty(HorarioEntradaString))
+                    return null;
+                
+                if (TimeSpan.TryParse(HorarioEntradaString, out var timeSpan))
+                    return timeSpan;
+                
+                return null;
+            }
+        }
 
         [Range(1, 50)]
         public int NumeroVisitantes { get; set; } = 1;
@@ -22,7 +39,23 @@ namespace BaitacaConnect.Models.DTOs
     {
         public DateOnly? DataVisita { get; set; }
         
-        public TimeSpan? HorarioEntrada { get; set; }
+        [JsonPropertyName("horarioEntrada")]
+        public string? HorarioEntradaString { get; set; }
+
+        [JsonIgnore]
+        public TimeSpan? HorarioEntrada 
+        { 
+            get 
+            {
+                if (string.IsNullOrEmpty(HorarioEntradaString))
+                    return null;
+                
+                if (TimeSpan.TryParse(HorarioEntradaString, out var timeSpan))
+                    return timeSpan;
+                
+                return null;
+            }
+        }
         
         [Range(1, 50)]
         public int? NumeroVisitantes { get; set; }

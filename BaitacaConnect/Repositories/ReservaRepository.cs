@@ -55,7 +55,7 @@ namespace BaitacaConnect.Repositories
 
         public async Task<Reserva> CreateReservaAsync(Reserva reserva)
         {
-            reserva.DataCriacao = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
+            reserva.DataCriacao = DateTime.Now; // Removido SpecifyKind UTC
             _context.Reservas.Add(reserva);
             await _context.SaveChangesAsync();
             return reserva;
