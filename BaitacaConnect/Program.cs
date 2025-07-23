@@ -17,6 +17,8 @@ builder.Services.AddScoped<IParqueRepository, ParqueRepository>();
 builder.Services.AddScoped<ITrilhaRepository, TrilhaRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IReservaRepository, ReservaRepository>();
+builder.Services.AddScoped<IRelatorioVisitaRepository, RelatorioVisitaRepository>();
+builder.Services.AddScoped<IFaunaFloraRepository, FaunaFloraRepository>();
 
 // Registrar Services no DI Container
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -24,6 +26,8 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IParqueService, ParqueService>();
 builder.Services.AddScoped<ITrilhaService, TrilhaService>();
 builder.Services.AddScoped<IReservaService, ReservaService>();
+builder.Services.AddScoped<IRelatorioVisitaService, RelatorioVisitaService>();
+builder.Services.AddScoped<IFaunaFloraService, FaunaFloraService>();
 
 // Add services to the container.
 builder.Services.AddControllers();

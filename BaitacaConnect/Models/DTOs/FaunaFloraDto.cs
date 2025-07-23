@@ -60,8 +60,7 @@ namespace BaitacaConnect.Models.DTOs
         public string? Descricao { get; set; }
         public string? Caracteristicas { get; set; }
         public string? Imagens { get; set; }
-        public List<int>? TrilhasOndeEncontra { get; set; }
-        public List<TrilhaResumoDto>? TrilhasInfo { get; set; }
+        public List<int> TrilhasOndeEncontra { get; set; } = new();
     }
 
     public class FaunaFloraResumoDto
@@ -92,5 +91,25 @@ namespace BaitacaConnect.Models.DTOs
         public string? Categoria { get; set; }
         public int? IdTrilha { get; set; }
         public int? IdParque { get; set; }
+    }
+
+    public class EstatisticasFaunaFloraDto
+    {
+        public int TotalFauna { get; set; }
+        public int TotalFlora { get; set; }
+        public int TotalEspecies { get; set; }
+        public int TotalCategorias { get; set; }
+        public Dictionary<string, int> DistribuicaoPorTipo { get; set; } = new();
+        public List<string> Categorias { get; set; } = new();
+    }
+
+    public class GuiaEspeciesDto
+    {
+        public int IdTrilha { get; set; }
+        public string NomeTrilha { get; set; } = string.Empty;
+        public int TotalEspecies { get; set; }
+        public int TotalFauna { get; set; }
+        public int TotalFlora { get; set; }
+        public List<FaunaFloraResponseDto> Especies { get; set; } = new();
     }
 }
